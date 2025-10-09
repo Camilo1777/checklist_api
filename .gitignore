@@ -1,24 +1,14 @@
-# Entorno virtual
-.venv/
-env/
-venv/
-
-# Archivos compilados de Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Configuración local y secretos
-*.env
-.env
-
-# IDEs y editores
-.vscode/
-.idea/
-
-# Logs
+# Ignorar dependencias instaladas y archivos sensibles
+/vendor/
+/.env
+.env.local
+/.idea/
+/.vscode/
+/node_modules/
 *.log
-
-# Base de datos local (si no quieres subirla)
-*.sqlite3
+*.cache
+.DS_Store
+phpunit.xml.cache
+/uploads/
+# Ignorar archivos de sistema
+Thumbs.db

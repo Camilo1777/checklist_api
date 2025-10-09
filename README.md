@@ -1,91 +1,59 @@
 # Checklist API
 
-API para registro y login de profesores usando FastAPI, SQLAlchemy y MySQL.  
-Las contraseñas se almacenan hasheadas con bcrypt.
+API REST sencilla en PHP para el manejo de profesores y autenticación JWT.
 
-## Requisitos
+Descripción
+- Proyecto pequeño pensado para usarse con una app Flutter que consume endpoints de autenticación (`auth/register.php`, `auth/login.php`).
 
-- Python 3.10+
-- MySQL
-- pip
+Requisitos
+- PHP 7.4+ (o PHP 8.x)
+- MySQL / MariaDB
+- XAMPP (opcional, recomendado para desarrollo local)
+- Composer
 
-## Instalación
+Instalación rápida
+1. Clona o copia este repositorio en tu servidor (ej. `c:\xampp\htdocs\checklist_api`).
+2. Edita `config/database.php` y ajusta las credenciales de la base de datos si es necesario.
+3. Ajusta `config/secret.php` si quieres cambiar la clave secreta o tiempos del token.
+4. Si no has subido la carpeta `vendor/`, ejecuta en la raíz del proyecto:
 
-1. Clona el repositorio o descarga los archivos.
-2. Instala las dependencias:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Configura la conexión a la base de datos en `database.py`:
-
-   ```python
-   DATABASE_URL = "mysql+pymysql://usuario:contraseña@localhost:3305/checklist"
-   ```
-
-4. Crea la base de datos `checklist` en MySQL si no existe.
-
-## Uso
-
-1. Ejecuta la API:
-
-   ```bash
-   uvicorn main:app --reload
-   ```
-
-2. Endpoints disponibles:
-
-   ### Registrar profesor
-
-   **POST /register**
-
-   Campos (form-data):  
-   - `cedulaprofesor` (int)
-   - `nombre` (str)
-   - `apellido` (str)
-   - `email` (str)
-   - `password` (str)
-
-   **Ejemplo con curl:**
-   ```bash
-   curl -X POST http://localhost:8000/register \
-     -F "cedulaprofesor=123456" \
-     -F "nombre=Juan" \
-     -F "apellido=Pérez" \
-     -F "email=juan@example.com" \
-     -F "password=miclave123"
-   ```
-
-   ### Login profesor
-
-   **POST /login**
-
-   Campos (form-data):  
-   - `email` (str)
-   - `password` (str)
-
-   **Ejemplo con curl:**
-   ```bash
-   curl -X POST http://localhost:8000/login \
-     -F "email=juan@example.com" \
-     -F "password=miclave123"
-   ```
-
-## Notas
-
-- Las contraseñas se hashean automáticamente con bcrypt.
-- No insertes usuarios manualmente en la base de datos, usa el endpoint `/register`.
-- El modelo de profesor está en `profesor_models.py`.
-
-## Pruebas de conexión
-
-Puedes probar la conexión a la base de datos ejecutando:
-
-```bash
-python test_db.py
+```powershell
+# En PowerShell
+composer install
 ```
 
+Uso
+- Endpoints principales:
+  - `POST /auth/register.php` — Registrar profesor.
+  - `POST /auth/login.php` — Login y obtención de token JWT.
 
+Ejemplo (JSON) para registro:
 
+```json
+{
+  "idprofesor": "12345",
+  "nombre": "Juan",
+  "apellido": "Pérez",
+  "email": "juan@example.com",
+  "password": "secret123"
+}
+```
 
+Ejemplo (PowerShell) para login:
+
+```powershell
+Invoke-RestMethod -Uri "http://localhost/checklist_api/auth/login.php" -Method Post -Body (@{ email = 'juan@example.com'; password = 'secret123' } | ConvertTo-Json) -ContentType 'application/json'
+```
+
+Notas
+- El proyecto usa `firebase/php-jwt` para generación y verificación de tokens.
+- Las contraseñas se almacenan con `password_hash` (bcrypt).
+- Ajusta los tiempos de expiración del token en `config/secret.php` según tus necesidades.
+
+Siguientes pasos recomendados
+- Proteger endpoints adicionales con validación del token (ej. usando `validate_token.php`).
+- Añadir migraciones/SQL de ejemplo para la tabla `profesor`.
+- Añadir pruebas unitarias y/o Postman collection.
+
+Licencia
+- Proyecto sin licencia explícita (añadir una `LICENSE` si quieres públicarlo).
