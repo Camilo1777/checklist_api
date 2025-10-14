@@ -2,77 +2,96 @@
 require '../vendor/autoload.php';
 require '../config/database.php';
 
-header("Access-Control-Allow-Origin: *");
+// CORS para pruebas (Flutter Web). En entorno real, fija el origen.
+if (isset($_SERVER['HTTP_ORIGIN'])) {
+    header("Access-Control-Allow-Origin: " . $_SERVER['HTTP_ORIGIN']);
+} else {
+    header("Access-Control-Allow-Origin: *");
+}
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST");
 
-// Conectar a DB
-$database = new Database();
-$conn = $database->getConnection();
-
-// Leer JSON del body
-$data = json_decode(file_get_contents("php://input"));
-
-if (!$data) {
-    http_response_code(400);
-    echo json_encode(["message" => "Request mal formado o sin JSON"]);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
     exit;
 }
 
-// Campos requeridos: idprofesor (código de tarjeta), nombre, apellido, email, password
+// Conectar a la DB
+$database = new Database();
+$conn = $database->getConnection();
+
+// Leer JSON
+$raw = file_get_contents('php://input');
+if (empty($raw)) {
+    http_response_code(400);
+    echo json_encode(["message" => "Cuerpo vacío." ]);
+    exit;
+}
+
+$data = json_decode($raw);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    http_response_code(400);
+    echo json_encode(["message" => "JSON inválido." ]);
+    exit;
+}
+
+// Campos
 $idprofesor = trim($data->idprofesor ?? '');
 $nombre     = trim($data->nombre ?? '');
 $apellido   = trim($data->apellido ?? '');
-$email      = trim($data->email ?? '');
+$email_raw  = trim($data->email ?? '');
+$email      = filter_var($email_raw, FILTER_VALIDATE_EMAIL);
 $password   = $data->password ?? '';
 
 if (empty($idprofesor) || empty($nombre) || empty($email) || empty($password)) {
     http_response_code(400);
-    echo json_encode(["message" => "Faltan datos obligatorios (idprofesor, nombre, email, password)"]);
+    echo json_encode(["message" => "Faltan datos obligatorios o email inválido." ]);
     exit;
 }
 
-// Verificar si ya existe idprofesor o email
-$checkSql = "SELECT idprofesor, email FROM profesor WHERE idprofesor = :idprofesor OR email = :email LIMIT 1";
-$checkStmt = $conn->prepare($checkSql);
-$checkStmt->bindParam(':idprofesor', $idprofesor);
-$checkStmt->bindParam(':email', $email);
-$checkStmt->execute();
-$exists = $checkStmt->fetch(PDO::FETCH_ASSOC);
+try {
+    // ¿Existe ya?
+    $checkSql = "SELECT idprofesor, email FROM profesor WHERE idprofesor = :idprofesor OR email = :email LIMIT 1";
+    $checkStmt = $conn->prepare($checkSql);
+    $checkStmt->bindParam(':idprofesor', $idprofesor);
+    $checkStmt->bindParam(':email', $email);
+    $checkStmt->execute();
+    $exists = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
-if ($exists) {
-    // Determinar cuál existe y responder 409
-    if ($exists['idprofesor'] === $idprofesor) {
-        http_response_code(409);
-        echo json_encode(["message" => "El idprofesor ya está registrado"]);
-    } else {
-        http_response_code(409);
-        echo json_encode(["message" => "El email ya está registrado"]);
+    if ($exists) {
+        if ($exists['idprofesor'] === $idprofesor) {
+            http_response_code(409);
+            echo json_encode(["message" => "Código ya registrado." ]);
+        } else {
+            http_response_code(409);
+            echo json_encode(["message" => "Email ya registrado." ]);
+        }
+        exit;
     }
-    exit;
-}
 
-// Hashear contraseña con bcrypt
-$hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+    // Guardar usuario
+    $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+    $insertSql = "INSERT INTO profesor (idprofesor, nombre, apellido, email, password) 
+                  VALUES (:idprofesor, :nombre, :apellido, :email, :password)";
+    $insertStmt = $conn->prepare($insertSql);
+    $insertStmt->bindParam(':idprofesor', $idprofesor);
+    $insertStmt->bindParam(':nombre', $nombre);
+    $insertStmt->bindParam(':apellido', $apellido);
+    $insertStmt->bindParam(':email', $email);
+    $insertStmt->bindParam(':password', $hashedPassword);
 
-// Insertar nuevo profesor
-$insertSql = "INSERT INTO profesor (idprofesor, nombre, apellido, email, password) 
-              VALUES (:idprofesor, :nombre, :apellido, :email, :password)";
-$insertStmt = $conn->prepare($insertSql);
-$insertStmt->bindParam(':idprofesor', $idprofesor);
-$insertStmt->bindParam(':nombre', $nombre);
-$insertStmt->bindParam(':apellido', $apellido);
-$insertStmt->bindParam(':email', $email);
-$insertStmt->bindParam(':password', $hashedPassword);
-
-if ($insertStmt->execute()) {
-    http_response_code(201);
-    echo json_encode([
-        "message" => "Profesor registrado correctamente",
-        "idprofesor" => $idprofesor
-    ]);
-} else {
+    if ($insertStmt->execute()) {
+        http_response_code(201);
+        echo json_encode(["message" => "Profesor creado.", "idprofesor" => $idprofesor ]);
+    } else {
+        http_response_code(500);
+        echo json_encode(["message" => "No se pudo crear el profesor." ]);
+    }
+} catch (PDOException $e) {
     http_response_code(500);
-    echo json_encode(["message" => "Error al registrar profesor"]);
+    echo json_encode(["message" => "Error interno." ]);
 }
+
 ?>
