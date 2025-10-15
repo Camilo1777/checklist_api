@@ -26,6 +26,7 @@ Uso
 - Endpoints principales:
   - `POST /auth/register.php` — Registrar profesor.
   - `POST /auth/login.php` — Login y obtención de token JWT.
+  - `GET /auth/validate_token.php` — Validar token (Authorization: Bearer <token>).
 
 Ejemplo (JSON) para registro:
 
@@ -54,6 +55,30 @@ Siguientes pasos recomendados
 - Proteger endpoints adicionales con validación del token (ej. usando `validate_token.php`).
 - Añadir migraciones/SQL de ejemplo para la tabla `profesor`.
 - Añadir pruebas unitarias y/o Postman collection.
+
+Despliegue en Railway
+1. Crea un proyecto en Railway y añade un plugin MySQL.
+2. En Variables (Environment), añade las variables mostradas en `.env.example` y pega las credenciales que te da Railway (DB_HOST, DB_NAME, DB_USER, DB_PASS, DB_PORT). Añade `SECRET_KEY` también.
+3. En Railway, conecta tu repositorio GitHub o sube el código.
+4. Usa el `Dockerfile` incluido o deja que Railway detecte el proyecto; asegura que `composer install` se ejecute en build.
+5. Ejecuta el SQL de creación de la tabla `profesor` (ver más abajo).
+
+SQL ejemplo para la tabla `profesor`:
+
+```
+CREATE TABLE profesor (
+  idprofesor VARCHAR(100) PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  apellido VARCHAR(100),
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+Notas de seguridad
+- No subas `.env` con credenciales. Usa las Variables de entorno del servicio en Railway.
+- Cambia `SECRET_KEY` por una cadena larga y segura en producción.
 
 Licencia
 - Proyecto sin licencia explícita (añadir una `LICENSE` si quieres públicarlo).

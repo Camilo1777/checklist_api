@@ -12,3 +12,5 @@ phpunit.xml.cache
 /uploads/
 # Ignorar archivos de sistema
 Thumbs.db
+vendor/
+.env
