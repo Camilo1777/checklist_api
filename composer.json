@@ -1,6 +1,1 @@
-{
-  "require": {
-    "firebase/php-jwt": "^6.11",
-    "ext-mysqli": "*"
-  }
-}
+{ "require": { "firebase/php-jwt": "^6.11" } }
