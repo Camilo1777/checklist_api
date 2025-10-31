@@ -3,9 +3,9 @@ header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-require '../vendor/autoload.php';
-require '../config/database.php';
-require '../config/secret.php';
+require 'vendor/autoload.php';
+require 'config/database.php';
+require 'config/secret.php';
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
