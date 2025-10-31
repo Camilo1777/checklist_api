@@ -29,7 +29,7 @@ if (!is_numeric($idprofesor)) {
 
 try {
     $query = "
-        SELECT m.idmateria, m.nombre AS materia, p.nombre AS profesor
+        SELECT m.idmateria, m.nombremateria AS materia, p.nombre AS profesor
         FROM materias m
         INNER JOIN asignacion a ON a.idmateria = m.idmateria
         INNER JOIN profesor p ON p.idprofesor = a.idprofesor
