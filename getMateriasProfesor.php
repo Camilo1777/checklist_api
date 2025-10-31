@@ -1,57 +1,91 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-require_once __DIR__ . '/config/database.php';
+require '../vendor/autoload.php';
+require '../config/database.php';
+require '../config/secret.php';
 
-$database = new Database();
-$conn = $database->getConnection();
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 
-if (!$conn) {
-    echo json_encode(["success" => false, "message" => "Error de conexión a la base de datos."]);
+// ------------------------
+// 1. Leer headers
+// ------------------------
+$headers = apache_request_headers();
+$authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+
+if (empty($authHeader) || !preg_match('/Bearer\s+(\S+)/', $authHeader, $matches)) {
+    http_response_code(401);
+    echo json_encode(["success" => false, "message" => "Token no proporcionado"]);
     exit;
 }
 
-if (!isset($_GET['idprofesor'])) {
-    http_response_code(400);
-    echo json_encode(["success" => false, "message" => "Falta el parámetro idprofesor."]);
-    exit;
-}
+$token = $matches[1];
 
-$idprofesor = $_GET['idprofesor'];
-
-// Validación básica: asegurar que sea numérico
-if (!is_numeric($idprofesor)) {
-    http_response_code(400);
-    echo json_encode(["success" => false, "message" => "El parámetro idprofesor debe ser numérico."]);
-    exit;
-}
-
+// ------------------------
+// 2. Decodificar token
+// ------------------------
 try {
-    $query = "
-        SELECT m.idmateria, m.nombremateria AS materia, p.nombre AS profesor
-        FROM materias m
-        INNER JOIN asignacion a ON a.idmateria = m.idmateria
-        INNER JOIN profesor p ON p.idprofesor = a.idprofesor
-        WHERE p.idprofesor = :idprofesor
+    $decoded = JWT::decode($token, new Key($secret_key, 'HS256'));
+    $idprofesor = $decoded->data->idprofesor ?? $decoded->data->id ?? null;
+
+    if (!$idprofesor) {
+        throw new Exception("ID de profesor no encontrado en token");
+    }
+} catch (Exception $e) {
+    http_response_code(401);
+    echo json_encode([
+        "success" => false,
+        "message" => "Token inválido o expirado",
+        "error" => $e->getMessage()
+    ]);
+    exit;
+}
+
+// ------------------------
+// 3. Conexión DB
+// ------------------------
+try {
+    $db = (new Database())->connect();
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        "success" => false,
+        "message" => "Error de conexión a la base de datos.",
+        "error" => $e->getMessage()
+    ]);
+    exit;
+}
+
+// ------------------------
+// 4. Consulta materias por profesor
+// ------------------------
+try {
+    $sql = "
+        SELECT 
+            m.idmateria,
+            m.nombremateria,
+            m.semestre,
+            m.horas,
+            a.idasignacion
+        FROM asignacion a
+        INNER JOIN materias m ON a.idmateria = m.idmateria
+        WHERE a.idprofesor = :idprofesor
     ";
 
-    $stmt = $conn->prepare($query);
-    // Usar bindValue con tipo entero para mayor seguridad
-    $stmt->bindValue(':idprofesor', (int)$idprofesor, PDO::PARAM_INT);
+    $stmt = $db->prepare($sql);
+    $stmt->bindParam(':idprofesor', $idprofesor, PDO::PARAM_INT);
     $stmt->execute();
-
     $materias = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    http_response_code(200);
     echo json_encode([
         "success" => true,
-        "count" => count($materias),
         "materias" => $materias
     ]);
 } catch (PDOException $e) {
     http_response_code(500);
-    // En desarrollo está bien devolver el mensaje; en producción quitar $e->getMessage()
     echo json_encode([
         "success" => false,
         "message" => "Error al consultar las materias.",
