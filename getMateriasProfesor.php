@@ -55,7 +55,11 @@ try {
 // 3. Conexión DB
 // ------------------------
 try {
-    $db = (new Database())->connect();
+    // Database::getConnection() es el método definido en config/database.php
+    $db = (new Database())->getConnection();
+    if (!$db) {
+        throw new Exception('No se pudo establecer conexión a la base de datos');
+    }
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
