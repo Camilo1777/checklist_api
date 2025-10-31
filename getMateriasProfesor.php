@@ -74,12 +74,12 @@ try {
 // 4. Consulta materias por profesor
 // ------------------------
 try {
+    // La tabla `materias` en este schema contiene `idmateria` y `nombremateria`.
+    // Evitamos columnas inexistentes (p.ej. m.semestre, m.horas) que causaban el error 1054.
     $sql = "
         SELECT 
             m.idmateria,
-            m.nombremateria,
-            m.semestre,
-            m.horas,
+            m.nombremateria AS materia,
             a.idasignacion
         FROM asignacion a
         INNER JOIN materias m ON a.idmateria = m.idmateria
@@ -87,7 +87,8 @@ try {
     ";
 
     $stmt = $db->prepare($sql);
-    $stmt->bindParam(':idprofesor', $idprofesor, PDO::PARAM_INT);
+    // Forzamos tipo entero al bind para evitar problemas de tipo
+    $stmt->bindValue(':idprofesor', (int)$idprofesor, PDO::PARAM_INT);
     $stmt->execute();
     $materias = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
